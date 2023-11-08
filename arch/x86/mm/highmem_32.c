@@ -2,6 +2,7 @@
 #include <linux/export.h>
 #include <linux/swap.h> /* for totalram_pages */
 #include <linux/bootmem.h>
+#include <linux/module.h>
 
 void *kmap(struct page *page)
 {

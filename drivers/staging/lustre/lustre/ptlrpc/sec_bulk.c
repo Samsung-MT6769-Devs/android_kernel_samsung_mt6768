@@ -399,7 +399,7 @@ int sptlrpc_enc_pool_init(void)
 	 * maximum capacity is 1/8 of total physical memory.
 	 * is the 1/8 a good number?
 	 */
-	page_pools.epp_max_pages = totalram_pages / 8;
+	page_pools.epp_max_pages = totalram_pages() / 8;
 	page_pools.epp_max_pools = npages_to_npools(page_pools.epp_max_pages);
 
 	init_waitqueue_head(&page_pools.epp_waitq);
