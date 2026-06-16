@@ -41,7 +41,7 @@ esac
 #edit perf.config to battery.config to disable perf tweaks, dont use them at the same time!
 #add $CFGDIR/ksu.config at the end before ">" for ksu integration(optional)
 #example: build m22 battery life oriented karnal with ksu: $CFGDIR/mt6768_slm_defconfig $CFGDIR/"$DEVICE".config $CFGDIR/battery.config $CFGDIR/ksu.config
-cat $CFGDIR/mt6768_slm_defconfig $CFGDIR/"$DEVICE".config $CFGDIR/battery.config > $CFGDIR/compiled_defconfig
+cat $CFGDIR/mt6768_slm_defconfig $CFGDIR/"$DEVICE".config $CFGDIR/perf.config > $CFGDIR/compiled_defconfig
 
 #selinux and gpu driver control
 #buildable: mali bifrost r25p0, mali valhall r32p1, mali avalon r49p1[WIP]
@@ -49,7 +49,7 @@ echo '
 # CONFIG_ALWAYS_ENFORCE is not set
 CONFIG_ALWAYS_PERMISSIVE=y
 
-CONFIG_MTK_GPU_VERSION="mali valhall r32p1"
+CONFIG_MTK_GPU_VERSION="mali bifrost r25p0"
 ' >> "$CFGDIR/compiled_defconfig"
 
 make -C $(pwd) O=$(pwd)/out -j$(nproc) compiled_defconfig
