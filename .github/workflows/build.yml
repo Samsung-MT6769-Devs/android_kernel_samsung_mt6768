@@ -65,16 +65,6 @@ jobs:
           
           cat $CFGDIR/mt6768_slm_defconfig $CFGDIR/$DEVICE.config $CFGDIR/battery.config > $CFGDIR/compiled_defconfig
           
-          # Жестко отключаем BTF отладку и генерацию через pahole
-          echo '
-          CONFIG_ALWAYS_PERMISSIVE=y
-          CONFIG_MTK_GPU_VERSION="mali valhall r32p1"
-          # CONFIG_DEBUG_INFO_BTF is not set
-          CONFIG_DEBUG_INFO_BTF=n
-          # CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT is not set
-          CONFIG_DEBUG_INFO_REDUCED=y
-          ' >> "$CFGDIR/compiled_defconfig"
-          
           make -C $(pwd) O=$(pwd)/out -j$(nproc) compiled_defconfig
           make -s -C $(pwd) O=$(pwd)/out -j$(nproc)
 
@@ -84,3 +74,4 @@ jobs:
         with:
           name: Image-${{ github.event.inputs.device }}
           path: out/arch/arm64/boot/Image
+          
