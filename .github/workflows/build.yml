@@ -33,9 +33,10 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/zyc-clang
           cd ${{ github.workspace }}/zyc-clang
-          wget https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20250704-release/Clang-14.0.6-20250704-release.tar.gz
-          tar -xf Clang-14.0.6-20250704-release.tar.gz
-          rm Clang-14.0.6-20250704-release.tar.gz
+          # Скачиваем официальный стабильный Google AOSP Clang r450784d (Clang 14.0.2)
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r450784d.tar.gz
+          tar -xf clang-r450784d.tar.gz
+          rm clang-r450784d.tar.gz
 
       - name: Build Kernel
         env:
