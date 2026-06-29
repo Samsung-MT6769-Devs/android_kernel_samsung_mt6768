@@ -31,12 +31,14 @@ jobs:
 
       - name: Build Compatible Pahole (for BTF)
         run: |
-          git clone --depth=1 --branch v1.22 https://git.kernel.org/pub/scm/devel/pahole/pahole.git
+          git clone --depth=1 --branch v1.24 https://git.kernel.org/pub/scm/devel/pahole/pahole.git
           mkdir -p pahole/build
           cd pahole/build
           cmake -DGENERIC_LIBVERSION=ON ..
           make -j$(nproc)
           sudo make install
+          # Фикс: обновляем кэш динамических библиотек, чтобы pahole увидел libdwarves
+          sudo ldconfig
           cd ../..
           rm -rf pahole
 
