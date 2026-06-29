@@ -33,10 +33,10 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/zyc-clang
           cd ${{ github.workspace }}/zyc-clang
-          # Скачиваем официальный стабильный Google AOSP Clang r450784d (Clang 14.0.2)
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r450784d.tar.gz
-          tar -xf clang-r450784d.tar.gz
-          rm clang-r450784d.tar.gz
+          # Используем стабильный Proton Clang 14 из GitHub Releases
+          wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20220310.tar.gz
+          tar -xf 20220310.tar.gz --strip-components=1
+          rm 20220310.tar.gz
 
       - name: Build Kernel
         env:
