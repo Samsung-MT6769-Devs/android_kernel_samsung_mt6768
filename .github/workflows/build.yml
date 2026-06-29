@@ -33,10 +33,10 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/zyc-clang
           cd ${{ github.workspace }}/zyc-clang
-          # Используем стабильный Proton Clang 14 из GitHub Releases
-          wget https://github.com/kdrag0n/proton-clang/archive/refs/tags/20220310.tar.gz
-          tar -xf 20220310.tar.gz --strip-components=1
-          rm 20220310.tar.gz
+          # Прямая ссылка на бинарники оригинального ZyC Clang 14.0.6 из твоего скрипта
+          wget https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20250704-release/Clang-14.0.6-20250704-release.tar.gz
+          tar -xf Clang-14.0.6-20250704-release.tar.gz
+          rm Clang-14.0.6-20250704-release.tar.gz
 
       - name: Build Kernel
         env:
