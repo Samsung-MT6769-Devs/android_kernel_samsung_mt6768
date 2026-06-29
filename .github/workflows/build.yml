@@ -26,21 +26,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 libncurses5-dev curl cmake libdw-dev
+          sudo apt-get install -y bc bison build-essential ccache flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 libncurses5-dev curl
           sudo ln -s /usr/lib/x86_64-linux-gnu/libxml2.so.2 /usr/lib/x86_64-linux-gnu/libxml2.so.16 2>/dev/null || true
-
-      - name: Build Compatible Pahole (for BTF)
-        run: |
-          git clone --depth=1 --branch v1.24 https://git.kernel.org/pub/scm/devel/pahole/pahole.git
-          mkdir -p pahole/build
-          cd pahole/build
-          cmake -DGENERIC_LIBVERSION=ON ..
-          make -j$(nproc)
-          sudo make install
-          # Фикс: обновляем кэш динамических библиотек, чтобы pahole увидел libdwarves
-          sudo ldconfig
-          cd ../..
-          rm -rf pahole
 
       - name: Download Clang Toolchain
         run: |
@@ -78,9 +65,14 @@ jobs:
           
           cat $CFGDIR/mt6768_slm_defconfig $CFGDIR/$DEVICE.config $CFGDIR/battery.config > $CFGDIR/compiled_defconfig
           
+          # Жестко отключаем BTF отладку и генерацию через pahole
           echo '
           CONFIG_ALWAYS_PERMISSIVE=y
           CONFIG_MTK_GPU_VERSION="mali valhall r32p1"
+          # CONFIG_DEBUG_INFO_BTF is not set
+          CONFIG_DEBUG_INFO_BTF=n
+          # CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT is not set
+          CONFIG_DEBUG_INFO_REDUCED=y
           ' >> "$CFGDIR/compiled_defconfig"
           
           make -C $(pwd) O=$(pwd)/out -j$(nproc) compiled_defconfig
@@ -92,4 +84,3 @@ jobs:
         with:
           name: Image-${{ github.event.inputs.device }}
           path: out/arch/arm64/boot/Image
-          
