@@ -298,6 +298,8 @@ static inline struct kbase_mem_phy_alloc *kbase_mem_phy_alloc_put(struct kbase_m
  *          that triggered incremental rendering by growing too much.
  * @rbtree:          Backlink to the red-black tree of memory regions.
  * @start_pfn:       The Page Frame Number in GPU virtual address space.
+ * @user_data:       The address of GPU command queue when VA region represents
+ *                   a ring buffer.
  * @nr_pages:        The size of the region in pages.
  * @initial_commit:  Initial commit, for aligning the start address and
  *                   correctly growing KBASE_REG_TILER_ALIGN_TOP regions.
@@ -337,6 +339,7 @@ struct kbase_va_region {
 	struct list_head link;
 	struct rb_root *rbtree;
 	u64 start_pfn;
+	void *user_data;
 	size_t nr_pages;
 	size_t initial_commit;
 	size_t threshold_pages;
@@ -486,6 +489,7 @@ struct kbase_va_region {
 	struct list_head jit_node;
 	u16 jit_usage_id;
 	u8 jit_bin_id;
+
 #if MALI_JIT_PRESSURE_LIMIT_BASE
 	/* Pointer to an object in GPU memory defining an end of an allocated
 	 * region
@@ -595,7 +599,7 @@ static inline struct kbase_va_region *kbase_va_region_alloc_get(
 	WARN_ON(region->va_refcnt == INT_MAX);
 
 	/* non-atomic as kctx->reg_lock is held */
-	dev_dbg(kctx->kbdev->dev, "va_refcnt %d before get %pK\n",
+	dev_vdbg(kctx->kbdev->dev, "va_refcnt %d before get %pK\n",
 		region->va_refcnt, (void *)region);
 	region->va_refcnt++;
 
@@ -612,7 +616,7 @@ static inline struct kbase_va_region *kbase_va_region_alloc_put(
 
 	/* non-atomic as kctx->reg_lock is held */
 	region->va_refcnt--;
-	dev_dbg(kctx->kbdev->dev, "va_refcnt %d after put %pK\n",
+	dev_vdbg(kctx->kbdev->dev, "va_refcnt %d after put %pK\n",
 		region->va_refcnt, (void *)region);
 	if (!region->va_refcnt)
 		kbase_region_refcnt_free(kctx->kbdev, region);
@@ -1901,7 +1905,7 @@ bool kbase_has_exec_va_zone(struct kbase_context *kctx);
  * Return: Zero on success, or negative error code.
  */
 int kbase_map_external_resource(struct kbase_context *kctx, struct kbase_va_region *reg,
-				struct mm_struct *locked_mm);
+								struct mm_struct *locked_mm);
 
 /**
  * kbase_unmap_external_resource - Unmap an external resource from the GPU.
@@ -1914,6 +1918,11 @@ int kbase_map_external_resource(struct kbase_context *kctx, struct kbase_va_regi
  * requires the caller to explicitly check their state.
  */
 void kbase_unmap_external_resource(struct kbase_context *kctx, struct kbase_va_region *reg);
+/**
+ * kbase_unpin_user_buf_page - Unpin a page of a user buffer.
+ * @page: page to unpin
+ */
+void kbase_unpin_user_buf_page(struct page *page);
 
 /**
  * kbase_jd_user_buf_pin_pages - Pin the pages of a user buffer.

@@ -50,4 +50,3 @@ mali_kbase-$(CONFIG_MALI_DEVFREQ) += \
 
 ccflags-y += \
 	-I$(src)/platform/mtk_platform_common/
-

@@ -1,20 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2018 MediaTek Inc.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ * Copyright (c) 2021 MediaTek Inc.
  */
+
 #ifndef __MTK_GPU_POWER_MODEL_H__
 #define __MTK_GPU_POWER_MODEL_H__
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/kernel.h>
+
+
+#include <linux/module.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+
 
 enum {
 	GPU_PM_POWER_STATUE,
@@ -30,7 +29,8 @@ enum {
 };
 
 struct gpu_pm_ipi_cmds {
-	unsigned int cmd[GPU_PM_LAST];
+	unsigned int cmd;	
+	unsigned int power_statue;
 };
 
 void MTKGPUPower_model_stop(void);
@@ -39,6 +39,16 @@ void MTKGPUPower_model_start_swpm(unsigned int interval_ns);
 void MTKGPUPower_model_suspend(void);
 void MTKGPUPower_model_resume(void);
 int MTKGPUPower_model_init(void);
+void MTKGPUPower_model_destroy(void);
+
 void MTKGPUPower_model_sspm_enable(void);
+extern void (*mtk_ltr_gpu_pmu_start_fp)(unsigned int interval_ns);
+extern void (*mtk_ltr_gpu_pmu_stop_fp)(void);
+extern void (*mtk_swpm_gpu_pm_start_fp)(void);
+extern void (*mtk_set_gpu_idle_fp)(unsigned int val);
+
+
+
+
 
 #endif

@@ -144,7 +144,7 @@ int kbase_ipa_model_add_param_s32(struct kbase_ipa_model *model,
 			snprintf(elem_name, sizeof(elem_name), "%s.%d",
 				name, i);
 
-		dev_dbg(model->kbdev->dev, "%s.%s = %d (%s)\n",
+		dev_vdbg(model->kbdev->dev, "%s.%s = %d (%s)\n",
 			model->ops->name, elem_name, addr[i], origin);
 
 		err = kbase_ipa_model_param_add(model, elem_name,
@@ -191,7 +191,7 @@ int kbase_ipa_model_add_param_string(struct kbase_ipa_model *model,
 
 	addr[size - 1] = '\0';
 
-	dev_dbg(model->kbdev->dev, "%s.%s = \'%s\' (%s)\n",
+	dev_vdbg(model->kbdev->dev, "%s.%s = \'%s\' (%s)\n",
 		model->ops->name, name, string_prop_value, origin);
 
 	err = kbase_ipa_model_param_add(model, name, addr, size,
@@ -300,12 +300,12 @@ int kbase_ipa_init(struct kbase_device *kbdev)
 
 		gpu_id = kbdev->gpu_props.props.raw_props.gpu_id;
 		model_name = kbase_ipa_model_name_from_id(gpu_id);
-		dev_dbg(kbdev->dev,
+		dev_vdbg(kbdev->dev,
 			"Inferring model from GPU ID 0x%x: \'%s\'\n",
 			gpu_id, model_name);
 		err = 0;
 	} else {
-		dev_dbg(kbdev->dev,
+		dev_vdbg(kbdev->dev,
 			"Using ipa-model parameter from DT: \'%s\'\n",
 			model_name);
 	}
@@ -685,9 +685,17 @@ int kbase_get_real_power_locked(struct kbase_device *kbdev, u32 *power,
 		/* time_busy / total_time cannot be >1, so assigning the 64-bit
 		 * result of div_u64 to *power cannot overflow.
 		 */
+
+#if MALI_USE_CSF && IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
+		total_time = diff.time_busy[0] + (u64) diff.time_idle[0];
+		*power = div_u64(*power * (u64) diff.time_busy[0],
+				 max(total_time, 1ull));
+#else
 		total_time = diff.time_busy + (u64) diff.time_idle;
 		*power = div_u64(*power * (u64) diff.time_busy,
 				 max(total_time, 1ull));
+#endif
 	}
 
 	*power += get_static_power_locked(kbdev, model,

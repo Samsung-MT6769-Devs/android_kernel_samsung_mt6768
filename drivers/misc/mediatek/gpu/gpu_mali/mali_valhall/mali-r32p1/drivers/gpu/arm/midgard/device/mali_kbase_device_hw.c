@@ -40,7 +40,7 @@ void kbase_reg_write(struct kbase_device *kbdev, u32 offset, u32 value)
 		kbase_io_history_add(&kbdev->io_history, kbdev->reg + offset,
 				value, 1);
 #endif /* CONFIG_DEBUG_FS */
-//	dev_dbg(kbdev->dev, "w: reg %08x val %08x", offset, value);
+//	dev_vdbg(kbdev->dev, "w: reg %08x val %08x", offset, value);
 }
 
 KBASE_EXPORT_TEST_API(kbase_reg_write);
@@ -59,7 +59,7 @@ u32 kbase_reg_read(struct kbase_device *kbdev, u32 offset)
 		kbase_io_history_add(&kbdev->io_history, kbdev->reg + offset,
 				val, 0);
 #endif /* CONFIG_DEBUG_FS */
-//	dev_dbg(kbdev->dev, "r: reg %08x val %08x", offset, val);
+//	dev_vdbg(kbdev->dev, "r: reg %08x val %08x", offset, val);
 
 	return val;
 }
@@ -93,7 +93,7 @@ static int busy_wait_cache_clean_irq(struct kbase_device *kbdev)
 
 	/* reset gpu if time-out occurred */
 	if (max_loops == 0) {
-		dev_err(kbdev->dev,
+		dev_info(kbdev->dev,
 			"CLEAN_CACHES_COMPLETED bit stuck, might be caused by slow/unstable GPU clock or possible faulty FPGA connector\n");
 		if (kbase_prepare_to_reset_gpu_locked(kbdev, RESET_FLAGS_NONE))
 			kbase_reset_gpu_locked(kbdev);
@@ -107,8 +107,7 @@ static int busy_wait_cache_clean_irq(struct kbase_device *kbdev)
 	return 0;
 }
 
-int kbase_gpu_cache_flush_and_busy_wait(struct kbase_device *kbdev,
-					u32 flush_op)
+int kbase_gpu_cache_flush_and_busy_wait(struct kbase_device *kbdev, u32 flush_op)
 {
 	u32 irq_mask;
 	int need_to_wake_up = 0;
@@ -166,8 +165,7 @@ int kbase_gpu_cache_flush_and_busy_wait(struct kbase_device *kbdev,
 	return ret;
 }
 
-void kbase_gpu_start_cache_clean_nolock(struct kbase_device *kbdev,
-					u32 flush_op)
+void kbase_gpu_start_cache_clean_nolock(struct kbase_device *kbdev, u32 flush_op)
 {
 	u32 irq_mask;
 

@@ -28,8 +28,9 @@
 #include <mali_kbase_reset_gpu.h>
 #include <backend/gpu/mali_kbase_jm_internal.h>
 #include <backend/gpu/mali_kbase_js_internal.h>
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG) || IS_ENABLED(CONFIG_MTK_GPU_DEBUG_DFD)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG) || IS_ENABLED(CONFIG_MALI_MTK_DEBUG_DFD)
 #include <mtk_gpufreq.h>
+#include "platform/mtk_platform_common.h"
 #endif
 
 #if !MALI_USE_CSF
@@ -163,7 +164,7 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 		KBASE_DISJOINT_STATE_INTERLEAVED_CONTEXT_COUNT_THRESHOLD;
 					u32 softstop_flags = 0u;
 
-					dev_dbg(kbdev->dev, "Soft-stop");
+					dev_vdbg(kbdev->dev, "Soft-stop");
 					/* nr_user_contexts_running is updated
 					 * with the runpool_mutex, but we can't
 					 * take that here.
@@ -199,21 +200,34 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 					int ms =
 						js_devdata->scheduling_period_ns
 								/ 1000000u;
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG)
-					mt_gpufreq_dump_infra_status();
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+					if (!mtk_common_gpufreq_bringup()) {
+						mtk_common_debug_dump();
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+						gpufreq_dump_infra_status();
+						gpufreq_hardstop_dump_slog();
+#else
+						mt_gpufreq_dump_infra_status();
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
+					}
 #endif
 					dev_warn(kbdev->dev, "JS: Job Hard-Stopped (took more than %lu ticks at %lu ms/tick)",
 							(unsigned long)ticks,
 							(unsigned long)ms);
 					kbase_job_slot_hardstop(atom->kctx, s,
 									atom);
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG_DFD)
-					if (mt_gpufreq_is_dfd_force_dump() == 1 ||
-						mt_gpufreq_is_dfd_force_dump() == 2) {
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG_DFD)
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+					/* lohass: gpudfd */
+#else
+					if (!mtk_common_gpufreq_bringup() &&
+						(mt_gpufreq_is_dfd_force_dump() == 1 ||
+						mt_gpufreq_is_dfd_force_dump() == 2)) {
 						pr_info("gpu dfd force dump\n");
 						mt_gpufreq_software_trigger_dfd();
 						BUG_ON(1);
 					}
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 #endif
 #endif
 				} else if (ticks == gpu_reset_ticks) {
@@ -237,7 +251,7 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 					 * not soft-stop during
 					 * CONFIG_MALI_JOB_DUMP, however.
 					 */
-					dev_dbg(kbdev->dev, "Soft-stop");
+					dev_vdbg(kbdev->dev, "Soft-stop");
 				} else if (ticks ==
 					js_devdata->hard_stop_ticks_dumping) {
 					/* Job has been scheduled for at least
@@ -248,21 +262,34 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 					int ms =
 						js_devdata->scheduling_period_ns
 								/ 1000000u;
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG)
-					mt_gpufreq_dump_infra_status();
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+					if (!mtk_common_gpufreq_bringup()) {
+						mtk_common_debug_dump();
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+						gpufreq_dump_infra_status();
+						gpufreq_hardstop_dump_slog();
+#else
+						mt_gpufreq_dump_infra_status();
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
+					}
 #endif
 					dev_warn(kbdev->dev, "JS: Job Hard-Stopped (took more than %lu ticks at %lu ms/tick)",
 							(unsigned long)ticks,
 							(unsigned long)ms);
 					kbase_job_slot_hardstop(atom->kctx, s,
 									atom);
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG_DFD)
-					if (mt_gpufreq_is_dfd_force_dump() == 1 ||
-						mt_gpufreq_is_dfd_force_dump() == 2) {
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG_DFD)
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+					/* lohass: gpudfd */
+#else
+					if (!mtk_common_gpufreq_bringup() &&
+						(mt_gpufreq_is_dfd_force_dump() == 1 ||
+						mt_gpufreq_is_dfd_force_dump() == 2)) {
 						pr_info("gpu dfd force dump\n");
 						mt_gpufreq_software_trigger_dfd();
 						BUG_ON(1);
 					}
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 #endif
 #endif
 				} else if (ticks ==

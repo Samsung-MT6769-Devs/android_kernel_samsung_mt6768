@@ -1,14 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2018 MediaTek Inc.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
+ * Copyright (c) 2021 MediaTek Inc.
  */
 
 #include <mtk_gpu_utility.h>
@@ -20,50 +12,49 @@
 
 #include "mtk_gpu_power_sspm_ipi.h"
 #include "mali_kbase.h"
-#include <uapi/gpu/arm/midgard/mali_kbase_ioctl.h>
 #include "mali_kbase_vinstr.h"
-#ifdef CONFIG_MTK_GPU_SWPM_SUPPORT
-#include <sspm_ipi_id.h>
-#include <sspm_define.h>
+#include <linux/scmi_protocol.h>
+#include <linux/module.h>
+#include <tinysys-scmi.h>
+#include "platform/mtk_platform_common.h"
+
+
+#if MALI_USE_CSF
+#include "csf/mali_kbase_csf_firmware.h"
 #endif
+
 
 static int init_flag;
 static bool ipi_register_flag;
 
 struct kbase_device *pm_kbdev;
 int gpu_pm_ipi_ackdata;
-
+#ifdef CONFIG_MALI_SCMI_ENABLE
+static int gpu_pm_id;
+static struct scmi_tinysys_info_st *_tinfo;
+#endif
 
 static DEFINE_MUTEX(gpu_pmu_info_lock);
 static void gpu_send_enable_ipi(unsigned int type, unsigned int enable)
 {
-#ifdef CONFIG_MTK_GPU_SWPM_SUPPORT
-	int cmd_len, ret;
+	int ret = 0;
 	struct gpu_pm_ipi_cmds ipi_cmd;
 	if (!ipi_register_flag) {
-		ret = mtk_ipi_register(&sspm_ipidev, IPIS_C_GPU_PM, NULL, NULL,
-				(void *) &gpu_pm_ipi_ackdata);
-		if (ret) {
-			pr_info("[gpu sspm] IPIS_C_GPU_PM ipi_register fail, ret %d\n", ret);
-			return;
-		}
-		ipi_register_flag = true;
+		pr_info("ipi_register_flag fail");
 	}
-	cmd_len = sizeof(struct gpu_pm_ipi_cmds) / SSPM_MBOX_SLOT_SIZE;
-	ipi_cmd.cmd[0] = type;
-	ipi_cmd.cmd[1] = enable;
-	ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_GPU_PM,
-		IPI_SEND_POLLING, &ipi_cmd,
-		cmd_len, 5000);
 
+	ipi_cmd.cmd = type;
+	ipi_cmd.power_statue= enable;
+#ifdef CONFIG_MALI_SCMI_ENABLE
+	ret = scmi_tinysys_common_set(_tinfo->ph, gpu_pm_id,
+			ipi_cmd.cmd, ipi_cmd.power_statue, 0, 0, 0);
+#endif
 	if (ret) {
 		pr_info("gpu_send_enable_ipi %d send fail,ret=%d\n",
-		ipi_cmd.cmd[0], ret);
+		ipi_cmd.cmd, ret);
 	}
-#else
-	return;
-#endif
 }
+
 
 static void MTKGPUPower_model_kbase_setup(int flag, unsigned int interval_ns) {
 	struct kbase_ioctl_hwcnt_reader_setup setup;
@@ -77,7 +68,7 @@ static void MTKGPUPower_model_kbase_setup(int flag, unsigned int interval_ns) {
 	//Default doesn't enable all HWC
 	setup.fe_bm = 0x16;
 	setup.shader_bm = 0x5EC6;
-	setup.tiler_bm = 0x2;
+	setup.tiler_bm = 0x6;
 	setup.mmu_l2_bm = 0x1FC0;
 	setup.buffer_count = 1;
 	MTK_update_mtk_pm(flag);
@@ -87,19 +78,23 @@ static void MTKGPUPower_model_kbase_setup(int flag, unsigned int interval_ns) {
 }
 
 void MTKGPUPower_model_sspm_enable(void) {
-	int pm_tool = MTK_get_mtk_pm();
-
+	//int pm_tool = MTK_get_mtk_pm();
+	/*
 	if (pm_tool == pm_non)
 		MTKGPUPower_model_kbase_setup(pm_swpm, 0);
-
+	*/
 	MTKGPUPower_model_kbase_setup(pm_swpm, 0);
+
 	gpu_send_enable_ipi(GPU_PM_SWITCH, 1);
 	init_flag = gpm_sspm_side;
 }
 
 void MTKGPUPower_model_start(unsigned int interval_ns) {
-	int pm_tool = MTK_get_mtk_pm();
 
+#if IS_ENABLED(CONFIG_MALI_MTK_GPU_LOW_POWER)
+	return;
+#else
+	int pm_tool = MTK_get_mtk_pm();
 	mutex_lock(&gpu_pmu_info_lock);
 	if (pm_tool == pm_swpm) {
 		//gpu stall counter on
@@ -118,6 +113,8 @@ void MTKGPUPower_model_start(unsigned int interval_ns) {
 		init_flag = gpm_kernel_side;
 
 	mutex_unlock(&gpu_pmu_info_lock);
+#endif
+
 }
 EXPORT_SYMBOL(MTKGPUPower_model_start);
 
@@ -151,19 +148,26 @@ void MTKGPUPower_model_start_swpm(unsigned int interval_ns){
 EXPORT_SYMBOL(MTKGPUPower_model_start_swpm);
 
 void MTKGPUPower_model_stop(void){
+
+#if IS_ENABLED(CONFIG_MALI_MTK_GPU_LOW_POWER)
+	return;
+#else
 	mutex_lock(&gpu_pmu_info_lock);
 	if (init_flag != gpm_off) {
 		if (init_flag == gpm_sspm_side) {
 			gpu_send_enable_ipi(GPU_PM_SWITCH, 0);
 			gpu_send_enable_ipi(GPU_PM_POWER_STATUE, 0);
+		} else {
+			MTK_kbasep_vinstr_hwcnt_release();
+			mtk_gpu_stall_stop();
+			mtk_gpu_stall_delete_subfs();
 		}
 		MTK_update_mtk_pm(pm_non);
-		MTK_kbasep_vinstr_hwcnt_release();
-		mtk_gpu_stall_stop();
-		mtk_gpu_stall_delete_subfs();
 		init_flag = gpm_off;
 	}
 	mutex_unlock(&gpu_pmu_info_lock);
+#endif
+
 }
 EXPORT_SYMBOL(MTKGPUPower_model_stop);
 
@@ -189,19 +193,50 @@ void MTKGPUPower_model_resume(void){
 }
 EXPORT_SYMBOL(MTKGPUPower_model_resume);
 
-int MTKGPUPower_model_init(void) {
-#ifdef CONFIG_MTK_GPU_SWPM_SUPPORT
-	int ret;
-
-	ret = mtk_ipi_register(&sspm_ipidev, IPIS_C_GPU_PM, NULL, NULL,
-			(void *) &gpu_pm_ipi_ackdata);
-	if (ret) {
-		pr_info("IPIS_C_GPU_PM ipi_register fail, ret %d\n", ret);
-		return -1;
-	}
-	ipi_register_flag = true;
+/* only work if CSF exit */
+void MTKGPUSet_idle_time(unsigned int val){
+#if MALI_USE_CSF && IS_ENABLED(CONFIG_MALI_MTK_GPU_IDLE_TEST)
+		struct kbase_device *kbdev;
+	
+		kbdev = (struct kbase_device *)mtk_common_get_kbdev();
+		if (IS_ERR_OR_NULL(kbdev)) {
+			return;
+		}
+	
+		kbase_csf_firmware_set_gpu_idle_hysteresis_time(kbdev, val);
+#else
+		return;
 #endif
+
+}
+
+int MTKGPUPower_model_init(void) {
+#ifdef CONFIG_MALI_SCMI_ENABLE
+	int ret;
+	_tinfo = get_scmi_tinysys_info();
+	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi_gpupm",
+			&gpu_pm_id);
+	ipi_register_flag = true;
+	if (ret) {
+		pr_info("get scmi_qos fail, ret %d\n", ret);
+		ipi_register_flag = false;
+	}
+#endif
+
+	mtk_ltr_gpu_pmu_start_fp = MTKGPUPower_model_start;
+	mtk_ltr_gpu_pmu_stop_fp = MTKGPUPower_model_stop;
+	mtk_swpm_gpu_pm_start_fp = MTKGPUPower_model_sspm_enable;
+	mtk_set_gpu_idle_fp = MTKGPUSet_idle_time;
+
 	return 0;
+}
+
+void MTKGPUPower_model_destroy(void) {
+	mtk_ltr_gpu_pmu_start_fp = NULL;
+	mtk_ltr_gpu_pmu_stop_fp = NULL;
+	mtk_swpm_gpu_pm_start_fp = NULL;
+	mtk_set_gpu_idle_fp = NULL;
+
 }
 
 

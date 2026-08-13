@@ -102,6 +102,9 @@ u64 kbase_backend_get_cycle_cnt(struct kbase_device *kbdev)
 {
 	u32 hi1, hi2, lo;
 
+	if (!kbdev->pm.backend.gpu_powered)
+		return 0;
+
 	/* Read hi, lo, hi to ensure a coherent u64 */
 	do {
 		hi1 = kbase_reg_read(kbdev,

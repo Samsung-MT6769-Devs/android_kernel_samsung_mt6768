@@ -35,6 +35,7 @@
 #include <linux/moduleparam.h>
 
 #include <mtk_gpufreq.h>
+#include "platform/mtk_platform_common.h"
 
 static void kbase_gpuprops_construct_coherent_groups(
 	struct base_gpu_props * const props)
@@ -119,9 +120,8 @@ int kbase_gpuprops_get_curr_config_props(struct kbase_device *kbdev,
 {
 	struct kbase_current_config_regdump curr_config_regdump;
 	int err;
-#if !defined(CONFIG_MACH_MT6768)
 	u64 force_shader_present = 0;
-#endif
+
 	if (WARN_ON(!kbdev) || WARN_ON(!curr_config))
 		return -EINVAL;
 
@@ -146,9 +146,15 @@ int kbase_gpuprops_get_curr_config_props(struct kbase_device *kbdev,
 		((u64) curr_config_regdump.shader_present_hi << 32) +
 		curr_config_regdump.shader_present_lo;
 
-#if !defined(CONFIG_MACH_MT6768) && !defined(CONFIG_MACH_MT6785)
 	/* MTK Modify: Force to set current shader_present. */
-	force_shader_present = (u64)mt_gpufreq_get_shader_present();
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+	force_shader_present = mtk_common_gpufreq_bringup() ?
+		0 : (u64)gpufreq_get_shader_present();
+#else
+	force_shader_present = mtk_common_gpufreq_bringup() ?
+		0 : (u64)mt_gpufreq_get_shader_present();
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
+
 	if (force_shader_present != 0 &&
 		(force_shader_present != curr_config->shader_present) &&
 		(force_shader_present & curr_config->shader_present)) {
@@ -158,10 +164,16 @@ int kbase_gpuprops_get_curr_config_props(struct kbase_device *kbdev,
 
 		curr_config->shader_present &= force_shader_present;
 	}
-#endif
+
 	curr_config->num_cores = hweight64(curr_config->shader_present);
 
 	curr_config->update_needed = false;
+
+#if MALI_USE_CSF
+#if defined(CONFIG_MALI_MTK_DUMMY_CM)
+	kbdev->pm.dummy_core_mask = curr_config->shader_present;
+#endif
+#endif
 
 	return 0;
 }
@@ -200,9 +212,7 @@ static int kbase_gpuprops_get_props(struct base_gpu_props * const gpu_props,
 	struct kbase_gpuprops_regdump regdump;
 	int i;
 	int err;
-#if !defined(CONFIG_MACH_MT6768)
 	u64 force_shader_present = 0;
-#endif
 
 	KBASE_DEBUG_ASSERT(kbdev != NULL);
 	KBASE_DEBUG_ASSERT(gpu_props != NULL);
@@ -225,9 +235,14 @@ static int kbase_gpuprops_get_props(struct base_gpu_props * const gpu_props,
 		((u64) regdump.shader_present_hi << 32) +
 		regdump.shader_present_lo;
 
-#if !defined(CONFIG_MACH_MT6768) && !defined(CONFIG_MACH_MT6785)
 	/* MTK Modify: Force to set current shader_present. */
-	force_shader_present = (u64)mt_gpufreq_get_shader_present();
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+	force_shader_present = mtk_common_gpufreq_bringup() ?
+		0 : (u64)gpufreq_get_shader_present();
+#else
+	force_shader_present = mtk_common_gpufreq_bringup() ?
+		0 : (u64)mt_gpufreq_get_shader_present();
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 
 	if (force_shader_present != 0 &&
 		(force_shader_present != gpu_props->raw_props.shader_present) &&
@@ -238,7 +253,7 @@ static int kbase_gpuprops_get_props(struct base_gpu_props * const gpu_props,
 
 		gpu_props->raw_props.shader_present &= force_shader_present;
 	}
-#endif
+
 	gpu_props->raw_props.tiler_present =
 		((u64) regdump.tiler_present_hi << 32) +
 		regdump.tiler_present_lo;

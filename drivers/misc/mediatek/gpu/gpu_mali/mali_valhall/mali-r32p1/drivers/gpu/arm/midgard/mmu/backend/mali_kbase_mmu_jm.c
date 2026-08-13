@@ -29,8 +29,9 @@
 #include <device/mali_kbase_device.h>
 #include <mali_kbase_as_fault_debugfs.h>
 #include <mmu/mali_kbase_mmu_internal.h>
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
 #include <mtk_gpufreq.h>
+#include "platform/mtk_platform_common.h"
 #endif
 
 void kbase_mmu_get_as_setup(struct kbase_mmu_table *mmut,
@@ -129,8 +130,15 @@ void kbase_mmu_report_fault_and_kill(struct kbase_context *kctx,
 	access_type = (fault->status >> 8) & 0x3;
 	source_id = (fault->status >> 16);
 
-#if IS_ENABLED(CONFIG_MTK_GPU_DEBUG)
-	mt_gpufreq_dump_infra_status();
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+	if (!mtk_common_gpufreq_bringup()) {
+		mtk_common_debug_dump();
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+		gpufreq_dump_infra_status();
+#else
+		mt_gpufreq_dump_infra_status();
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
+	}
 #endif
 
 	/* terminal fault, print info about the fault */
@@ -213,7 +221,7 @@ static void kbase_mmu_interrupt_process(struct kbase_device *kbdev,
 
 	lockdep_assert_held(&kbdev->hwaccess_lock);
 
-	dev_dbg(kbdev->dev,
+	dev_vdbg(kbdev->dev,
 		"Entering %s kctx %pK, as %pK\n",
 		__func__, (void *)kctx, (void *)as);
 
@@ -279,7 +287,7 @@ static void kbase_mmu_interrupt_process(struct kbase_device *kbdev,
 		atomic_inc(&kbdev->faults_pending);
 	}
 
-	dev_dbg(kbdev->dev,
+	dev_vdbg(kbdev->dev,
 		"Leaving %s kctx %pK, as %pK\n",
 		__func__, (void *)kctx, (void *)as);
 }
@@ -315,7 +323,7 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat)
 	u32 new_mask;
 	u32 tmp, bf_bits, pf_bits;
 
-	dev_dbg(kbdev->dev, "Entering %s irq_stat %u\n",
+	dev_vdbg(kbdev->dev, "Entering %s irq_stat %u\n",
 		__func__, irq_stat);
 	/* bus faults */
 	bf_bits = (irq_stat >> busfault_shift) & as_bit_mask;
@@ -416,14 +424,14 @@ void kbase_mmu_interrupt(struct kbase_device *kbdev, u32 irq_stat)
 	kbase_reg_write(kbdev, MMU_REG(MMU_IRQ_MASK), new_mask);
 	spin_unlock_irqrestore(&kbdev->mmu_mask_change, flags);
 
-	dev_dbg(kbdev->dev, "Leaving %s irq_stat %u\n",
+	dev_vdbg(kbdev->dev, "Leaving %s irq_stat %u\n",
 		__func__, irq_stat);
 }
 
 int kbase_mmu_switch_to_ir(struct kbase_context *const kctx,
 	struct kbase_va_region *const reg)
 {
-	dev_dbg(kctx->kbdev->dev,
+	dev_vdbg(kctx->kbdev->dev,
 		"Switching to incremental rendering for region %pK\n",
 		(void *)reg);
 	return kbase_job_slot_softstop_start_rp(kctx, reg);

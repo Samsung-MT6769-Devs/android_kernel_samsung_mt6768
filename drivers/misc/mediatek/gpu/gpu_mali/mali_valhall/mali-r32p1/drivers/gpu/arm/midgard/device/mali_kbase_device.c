@@ -291,6 +291,13 @@ int kbase_device_misc_init(struct kbase_device * const kbdev)
 	if (err)
 		goto term_as;
 
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+	kbdev->ged_log_buf_hnd_kbase = 0;
+	kbdev->ged_log_buf_hnd_kbase = ged_log_buf_alloc(8192, 256 * 8192,
+	                                         GED_LOG_BUF_TYPE_QUEUEBUFFER,
+	                                         "mali_exception", "mali_exception");
+#endif
+
 	init_waitqueue_head(&kbdev->cache_clean_wait);
 
 	kbase_debug_assert_register_hook(&kbase_ktrace_hook_wrapper, kbdev);
@@ -306,7 +313,7 @@ int kbase_device_misc_init(struct kbase_device * const kbdev)
 	mutex_init(&kbdev->kctx_list_lock);
 	INIT_LIST_HEAD(&kbdev->kctx_list);
 
-	dev_dbg(kbdev->dev, "Registering mali_oom_notifier_handlern");
+	dev_vdbg(kbdev->dev, "Registering mali_oom_notifier_handlern");
 	kbdev->oom_notifier_block.notifier_call = mali_oom_notifier_handler;
 	err = register_oom_notifier(&kbdev->oom_notifier_block);
 
@@ -318,6 +325,12 @@ int kbase_device_misc_init(struct kbase_device * const kbdev)
 	return 0;
 
 term_as:
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+	if(kbdev->ged_log_buf_hnd_kbase != 0) {
+		ged_log_buf_free(kbdev->ged_log_buf_hnd_kbase);
+		kbdev->ged_log_buf_hnd_kbase = 0;
+	}
+#endif
 	kbase_device_all_as_term(kbdev);
 dma_set_mask_failed:
 fail:

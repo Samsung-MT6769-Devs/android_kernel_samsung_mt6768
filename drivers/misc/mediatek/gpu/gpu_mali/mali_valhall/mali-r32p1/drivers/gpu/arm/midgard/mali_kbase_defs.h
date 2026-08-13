@@ -71,11 +71,16 @@
 #include <linux/regulator/consumer.h>
 #include <linux/memory_group_manager.h>
 
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+#include <ged_log.h>
+#endif
+
 #if defined(CONFIG_PM_RUNTIME) || defined(CONFIG_PM)
 #define KBASE_PM_RUNTIME 1
 #endif
 
 #include "debug/mali_kbase_debug_ktrace_defs.h"
+
 
 /** Number of milliseconds before we time out on a GPU soft/hard reset */
 #define RESET_TIMEOUT           500
@@ -411,6 +416,10 @@ struct kbase_pm_device_data {
 
 #if MALI_USE_CSF
 	u64 debug_core_mask;
+#if defined(CONFIG_MALI_MTK_DUMMY_CM)
+	u32 debug_core_mask_en;
+	u64 dummy_core_mask;
+#endif
 #else
 	/* One mask per job slot. */
 	u64 debug_core_mask[BASE_JM_MAX_NR_SLOTS];
@@ -575,7 +584,7 @@ struct kbase_mmu_mode const *kbase_mmu_mode_get_aarch64(void);
 
 #define DEVNAME_SIZE	16
 
-#if defined(MTK_GPU_BM_2)
+#if defined(CONFIG_MALI_MTK_GPU_BM_JM)
 struct job_status_qos {
         phys_addr_t phyaddr;
         size_t size;
@@ -587,6 +596,20 @@ struct v1_data {
         unsigned int frame;
         unsigned int job;
         unsigned int freq;
+};
+#endif
+
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+#define MTK_DEBUG_LOGBUF_NAME_LEN 64
+#define MTK_DEBUG_LOGBUF_ENTRY_SIZE 256
+struct mtk_debug_logbuf {
+	spinlock_t access_lock;
+	uint32_t tail;
+	uint32_t head;
+	char name[MTK_DEBUG_LOGBUF_NAME_LEN];
+	uint8_t *entries;
+	uint32_t entry_num;
+	bool is_circular;
 };
 #endif
 
@@ -875,6 +898,13 @@ struct kbase_process {
  *                         backend specific data for HW access layer.
  * @faults_pending:        Count of page/bus faults waiting for bottom half processing
  *                         via workqueues.
+ * @mmu_hw_operation_in_progress: Set before sending the MMU command and is
+ *                         cleared after the command is complete. Whilst this
+ *                         flag is set, the write to L2_PWROFF register will be
+ *                         skipped which is needed to workaround the HW issue
+ *                         GPU2019-3878. PM state machine is invoked after
+ *                         clearing this flag and hwaccess_lock is used to
+ *                         serialize the access.
  * @poweroff_pending:      Set when power off operation for GPU is started, reset when
  *                         power on for GPU is started.
  * @infinite_cache_active_default: Set to enable using infinite cache for all the
@@ -1120,6 +1150,9 @@ struct kbase_device {
 
 	atomic_t faults_pending;
 
+#if MALI_USE_CSF
+	bool mmu_hw_operation_in_progress;
+#endif
 	bool poweroff_pending;
 
 #if (KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE)
@@ -1210,9 +1243,19 @@ struct kbase_device {
 	struct ion_client *client;
 #endif
 
-#if defined(MTK_GPU_BM_2)
+#if defined(CONFIG_MALI_MTK_GPU_BM_JM)
 	struct job_status_qos job_status_addr;
 	struct v1_data* v1;
+#endif
+
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
+	GED_LOG_BUF_HANDLE ged_log_buf_hnd_kbase;
+#endif
+
+#if IS_ENABLED(CONFIG_MALI_MTK_TIMEOUT_RESET)
+	bool reset_force_evict_group_work;
+	bool reset_force_hard_reset;
+	spinlock_t reset_force_change;
 #endif
 };
 
@@ -1937,10 +1980,7 @@ static inline bool kbase_device_is_cpu_coherent(struct kbase_device *kbdev)
 /* Maximum number of loops polling the GPU for a cache flush before we assume it must have completed */
 #define KBASE_CLEAN_CACHE_MAX_LOOPS     100000
 /* Maximum number of loops polling the GPU for an AS command to complete before we assume the GPU has hung */
-#if defined(CONFIG_MACH_MT6768)
- #define KBASE_AS_INACTIVE_MAX_LOOPS     100000
-#else
- #define KBASE_AS_INACTIVE_MAX_LOOPS     100000000
-#endif
+#define KBASE_AS_INACTIVE_MAX_LOOPS     100000000
+
 
 #endif				/* _KBASE_DEFS_H_ */

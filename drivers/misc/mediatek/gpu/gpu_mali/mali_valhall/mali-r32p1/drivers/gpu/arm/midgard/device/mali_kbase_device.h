@@ -131,8 +131,7 @@ bool kbase_is_gpu_removed(struct kbase_device *kbdev);
  *
  * Return: 0 if successful or a negative error code on failure.
  */
-int kbase_gpu_cache_flush_and_busy_wait(struct kbase_device *kbdev,
-					u32 flush_op);
+int kbase_gpu_cache_flush_and_busy_wait(struct kbase_device *kbdev, u32 flush_op);
 
 /**
  * kbase_gpu_start_cache_clean - Start a cache clean
@@ -152,8 +151,7 @@ void kbase_gpu_start_cache_clean(struct kbase_device *kbdev, u32 flush_op);
  * Issue a given cache flush command to hardware.
  * hwaccess_lock must be held by the caller.
  */
-void kbase_gpu_start_cache_clean_nolock(struct kbase_device *kbdev,
-					u32 flush_op);
+void kbase_gpu_start_cache_clean_nolock(struct kbase_device *kbdev, u32 flush_op);
 
 /**
  * kbase_gpu_wait_cache_clean - Wait for cache cleaning to finish

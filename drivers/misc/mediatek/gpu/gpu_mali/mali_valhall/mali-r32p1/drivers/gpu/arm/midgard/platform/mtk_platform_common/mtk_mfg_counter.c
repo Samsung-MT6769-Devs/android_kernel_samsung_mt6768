@@ -1,14 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2017 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
+ * Copyright (c) 2021 MediaTek Inc.
  */
 
 #include <linux/spinlock.h>
@@ -35,8 +27,7 @@
 #define SHADER_BLOCK_NAME_POS	2
 #define MMU_BLOCK_NAME_POS		3
 //gpu stall counter
-#if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853) || IS_ENABLED(CONFIG_MACH_MT6833) \
-	|| IS_ENABLED(CONFIG_MACH_MT6877) || IS_ENABLED(CONFIG_MACH_MT6781)
+#if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853) || IS_ENABLED(CONFIG_MACH_MT6833)|| IS_ENABLED(CONFIG_MACH_MT6877)
 #define GPU_STALL_ADD_BASE	0x1021C000
 #else
 #define GPU_STALL_ADD_BASE	0x1021E000
@@ -54,7 +45,7 @@ static const char *const *hardware_counter_names;
 static int number_of_hardware_counters;
 static struct kbase_gator_hwcnt_info info;
 static struct kbase_gator_hwcnt_handles *handle;
-static GPU_PMU *mali_pmus;
+static struct GPU_PMU *mali_pmus;
 static int name_offset_table[MALI_HWC_TYPES];
 static int mfg_is_power_on;
 static int binited;
@@ -476,10 +467,10 @@ static void _mtk_mfg_init_counter(void)
 	}
 
 	/* Default doesn't enable all HWC */
-	info.bitmask[0] = 0x57; /* JM */
+	info.bitmask[0] = 0x157; /* JM */
 	info.bitmask[1] = 0x2; /* Tiler */
 	info.bitmask[2] = 0xffff; /* Shader */
-	info.bitmask[3] = 0x19CF; /* L2 & MMU */
+	info.bitmask[3] = 0x1FCF; /* L2 & MMU */
 	handle = kbase_gator_hwcnt_init(&info);
 	if (!handle) {
 		pr_info("[PMU]Error init hwcnt\n");
@@ -494,7 +485,7 @@ static void _mtk_mfg_init_counter(void)
 	}
 	if (!binited) {
 		number_of_hardware_counters = cnt - empty_hwc_cnt + MFG_MTK_COUNTER_SIZE;
-		mali_pmus = kcalloc(number_of_hardware_counters, sizeof(GPU_PMU), GFP_KERNEL);
+		mali_pmus = kcalloc(number_of_hardware_counters, sizeof(struct GPU_PMU), GFP_KERNEL);
 		if (!mali_pmus) {
 			pr_info("[PMU] fail to allocate mali_pmus\n");
 			return;
@@ -527,7 +518,7 @@ static void _mtk_mfg_init_counter(void)
 static int _mtk_mfg_update_counter(void)
 {
 	uint32_t success, ret, status, gpu_freq;
-	static struct timeval tv_start, tv_end;
+	static struct timespec64 tv_start, tv_end;
 	static unsigned long long start_utime, end_utime, timd_diff_us;
 	int block[RESERVED_BLOCK + 1] = {0};
 	ret = timd_diff_us = gpu_freq = active_cycle = 0;
@@ -544,10 +535,10 @@ static int _mtk_mfg_update_counter(void)
 
 		nr_hwc_blocks = info.nr_hwc_blocks ;
 		cnt = 0;
-		do_gettimeofday(&tv_end);
-		end_utime = tv_end.tv_sec * 1000000 + tv_end.tv_usec;
+		ktime_get_real_ts64(&tv_end);
+		end_utime = tv_end.tv_sec * 1000000 + (tv_end.tv_nsec / 1000);
 		timd_diff_us = (end_utime > start_utime) ? (end_utime - start_utime) : 0;
-		gpu_freq = mt_gpufreq_get_cur_freq();
+		gpu_freq = gpufreq_get_cur_freq(TARGET_DEFAULT)*1000;
 		_mtk_mfg_reset_counter(1);
 		for (i = 0; i < nr_hwc_blocks; i++) {
 			shader_block = 0;
@@ -609,14 +600,14 @@ static int _mtk_mfg_update_counter(void)
 FINISH:
 	if (handle) {
 		kbase_gator_instr_hwcnt_dump_irq(handle);
-		do_gettimeofday(&tv_start);
-		start_utime = tv_start.tv_sec * 1000000 + tv_start.tv_usec;
+		ktime_get_real_ts64(&tv_start);
+		start_utime = tv_start.tv_sec * 1000000 + (tv_start.tv_nsec / 1000);
 	}
 
 	return ret;
 }
 
-static int mali_get_gpu_pmu_init(GPU_PMU *pmus, int pmu_size, int *ret_size)
+static int mali_get_gpu_pmu_init(struct GPU_PMU *pmus, int pmu_size, int *ret_size)
 {
 	int ret = PMU_OK;
 	int block[RESERVED_BLOCK + 1] = {0};
@@ -675,7 +666,7 @@ static int mali_get_gpu_pmu_init(GPU_PMU *pmus, int pmu_size, int *ret_size)
 	return ret;
 }
 
-static int mali_get_gpu_pmu_swapnreset(GPU_PMU *pmus, int pmu_size)
+static int mali_get_gpu_pmu_swapnreset(struct GPU_PMU *pmus, int pmu_size)
 {
 	int i, ret;
 

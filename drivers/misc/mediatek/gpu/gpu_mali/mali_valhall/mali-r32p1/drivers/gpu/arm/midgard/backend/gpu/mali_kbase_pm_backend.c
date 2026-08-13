@@ -349,7 +349,7 @@ static void kbase_pm_gpu_poweroff_wait_wq(struct work_struct *data)
 
 static void kbase_pm_l2_clock_slow(struct kbase_device *kbdev)
 {
-#if defined(CONFIG_MALI_MIDGARD_DVFS)
+#if defined(CONFIG_MALI_MIDGARD_DVFS) && !defined(CONFIG_MALI_DEVFREQ)
 	struct clk *clk = kbdev->clocks[0];
 #endif
 
@@ -394,7 +394,7 @@ static void kbase_pm_l2_clock_slow(struct kbase_device *kbdev)
 
 static void kbase_pm_l2_clock_normalize(struct kbase_device *kbdev)
 {
-#if defined(CONFIG_MALI_MIDGARD_DVFS)
+#if defined(CONFIG_MALI_MIDGARD_DVFS) && !defined(CONFIG_MALI_DEVFREQ)
 	struct clk *clk = kbdev->clocks[0];
 #endif
 
@@ -788,7 +788,7 @@ void kbase_hwaccess_pm_resume(struct kbase_device *kbdev)
 	kbdev->pm.suspending = false;
 #ifdef CONFIG_MALI_ARBITER_SUPPORT
 	if (kbase_pm_is_gpu_lost(kbdev)) {
-		dev_dbg(kbdev->dev, "%s: GPU lost in progress\n", __func__);
+		dev_vdbg(kbdev->dev, "%s: GPU lost in progress\n", __func__);
 		kbase_pm_unlock(kbdev);
 		return;
 	}
