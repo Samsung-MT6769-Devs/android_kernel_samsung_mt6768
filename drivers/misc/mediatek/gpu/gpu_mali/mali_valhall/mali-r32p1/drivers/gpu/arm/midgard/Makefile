@@ -18,8 +18,6 @@
 #
 #
 
-ifeq ($(BUILD_RULE),OOT)
-
     ifeq ($(MTK_PLATFORM_VERSION),mt6789)
     MTK_GPU_VERSION := $(LOCAL_MTK_GPU_VERSION)
     MTK_PLATFORM := $(MTK_PLATFORM_VERSION)
@@ -127,7 +125,6 @@ ifeq ($(BUILD_RULE),OOT)
     CONFIG_MALI_SCMI_ENABLE := y
     endif
 
-    ifeq ($(MTK_PLATFORM_VERSION),mt6768)
     MTK_GPU_VERSION := $(LOCAL_MTK_GPU_VERSION)
     MTK_PLATFORM := $(MTK_PLATFORM_VERSION)
     CONFIG_MALI_REAL_HW := y
@@ -137,8 +134,6 @@ ifeq ($(BUILD_RULE),OOT)
     CONFIG_MALI_MTK_MEM_TRACK := y
     CONFIG_MALI_MTK_DEVFREQ := y
     CONFIG_MALI_MTK_DEVFREQ_THERMAL := y
-    endif
-endif
 
 # make $(src) as absolute path if it is not already, by prefixing $(srctree)
 # This is to prevent any build issue due to wrong path.
