@@ -37,7 +37,8 @@ static struct scmi_tinysys_info_st *_tinfo;
 static DEFINE_MUTEX(gpu_pmu_info_lock);
 static void gpu_send_enable_ipi(unsigned int type, unsigned int enable)
 {
-	int ret = 0;
+#ifdef CONFIG_MTK_GPU_SWPM_SUPPORT
+	int ret;
 	struct gpu_pm_ipi_cmds ipi_cmd;
 	if (!ipi_register_flag) {
 		pr_info("ipi_register_flag fail");
@@ -53,6 +54,9 @@ static void gpu_send_enable_ipi(unsigned int type, unsigned int enable)
 		pr_info("gpu_send_enable_ipi %d send fail,ret=%d\n",
 		ipi_cmd.cmd, ret);
 	}
+#else
+	return;
+#endif
 }
 
 
@@ -211,7 +215,7 @@ void MTKGPUSet_idle_time(unsigned int val){
 }
 
 int MTKGPUPower_model_init(void) {
-#ifdef CONFIG_MALI_SCMI_ENABLE
+#ifdef CONFIG_MTK_GPU_SWPM_SUPPORT
 	int ret;
 	_tinfo = get_scmi_tinysys_info();
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi_gpupm",
