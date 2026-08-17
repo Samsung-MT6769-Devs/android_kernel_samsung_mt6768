@@ -74,30 +74,14 @@ void mtk_common_debug_dump(void)
 #endif
 }
 
-int mtk_common_gpufreq_bringup(void)
-{
-	static int bringup = -1;
-
-	if (bringup == -1) {
-#if defined(CONFIG_MTK_GPUFREQ_V2)
-		bringup = gpufreq_bringup();
-#else
-		bringup = mt_gpufreq_bringup();
-#endif
-	}
-
-	return bringup;
-}
-
 int mtk_common_gpufreq_commit(int opp_idx)
 {
 	int ret = -1;
 
 	mutex_lock(&mfg_pm_lock);
 	if (opp_idx >= 0 && mtk_common_pm_is_mfg_active()) {
-#if defined(CONFIG_MTK_GPUFREQ_V2)
-		ret = mtk_common_gpufreq_bringup() ?
-			-1 : gpufreq_commit(TARGET_DEFAULT, opp_idx);
+#if defined(CONFIG_MACH_MT6768) || defined(CONFIG_MACH_MT6785)
+		ret = mt_gpufreq_target(opp_idx, false);
 #else
 		ret = mtk_common_gpufreq_bringup() ?
 			-1 : mt_gpufreq_target(opp_idx, KIR_POLICY);
@@ -133,13 +117,7 @@ static int mtk_common_gpu_utilization_show(struct seq_file *m, void *v)
 
 	mtk_common_update_gpu_utilization();
 
-#if defined(CONFIG_MTK_GPUFREQ_V2)
-	cur_opp_idx = mtk_common_gpufreq_bringup() ?
-		0 : gpufreq_get_cur_oppidx(TARGET_DEFAULT);
-#else
-	cur_opp_idx = mtk_common_gpufreq_bringup() ?
-		0 : mt_gpufreq_get_cur_freq_index();
-#endif /* CONFIG_MTK_GPUFREQ_V2 */
+	cur_opp_idx = mt_gpufreq_get_cur_freq_index();
 
 	util_active = mtk_common_get_util_active();
 	util_3d = mtk_common_get_util_3d();
@@ -154,7 +132,7 @@ static int mtk_common_gpu_utilization_show(struct seq_file *m, void *v)
 
 	return 0;
 }
-DEFINE_PROC_SHOW_ATTRIBUTE(mtk_common_gpu_utilization);
+DEFINE_SHOW_ATTRIBUTE(mtk_common_gpu_utilization);
 
 static int mtk_common_gpu_memory_show(struct seq_file *m, void *v)
 {
@@ -203,7 +181,7 @@ out_lock_held:
 
 	return 0;
 }
-DEFINE_PROC_SHOW_ATTRIBUTE(mtk_common_gpu_memory);
+DEFINE_SHOW_ATTRIBUTE(mtk_common_gpu_memory);
 
 void mtk_common_procfs_init(void)
 {
@@ -217,8 +195,8 @@ void mtk_common_procfs_init(void)
   		pr_info("cannot create /proc/%s\n", "mtk_mali");
   		return;
   	}
-	proc_create("utilization", 0444, mtk_mali_root, &mtk_common_gpu_utilization_proc_ops);
-	proc_create("gpu_memory", 0444, mtk_mali_root, &mtk_common_gpu_memory_proc_ops);
+	proc_create("utilization", 0444, mtk_mali_root, &mtk_common_gpu_utilization_fops);
+	proc_create("gpu_memory", 0444, mtk_mali_root, &mtk_common_gpu_memory_fops);
 }
 
 void mtk_common_procfs_exit(void)
@@ -263,7 +241,6 @@ int mtk_common_device_init(struct kbase_device *kbdev)
 	ged_dvfs_cal_gpu_utilization_fp = mtk_common_cal_gpu_utilization;
 #endif
 	ged_dvfs_gpu_freq_commit_fp = mtk_common_ged_dvfs_commit;
-	ged_dvfs_set_gpu_core_mask_fp = mtk_set_core_mask;
 #endif
 #if IS_ENABLED(CONFIG_MALI_MTK_MEM_TRACK)
 	mtk_get_gpu_memory_usage_fp = mtk_common_gpu_memory_usage;

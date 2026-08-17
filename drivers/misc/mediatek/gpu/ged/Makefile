@@ -28,6 +28,7 @@ ccflags-y += -DMTK_GED_KPI
 ccflags-y += -DGED_KPI_CPU_BOOST
 
 ifeq ($(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT),y)
+zort
 ccflags-y += -DGED_ENABLE_FB_DVFS
 ccflags-y += -DGED_ENABLE_DYNAMIC_DVFS_MARGIN
 ccflags-y += -DGED_CONFIGURE_LOADING_BASE_DVFS_STEP

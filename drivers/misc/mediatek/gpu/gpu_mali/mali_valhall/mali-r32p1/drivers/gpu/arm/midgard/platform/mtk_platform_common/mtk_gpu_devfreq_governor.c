@@ -24,7 +24,7 @@ static int mtk_common_gov_get_target_freq(struct devfreq *df,
 	if (err)
 		return err;
 
-	*freq = (!df->scaling_max_freq) ? UINT_MAX : df->scaling_max_freq;
+	*freq = UINT_MAX;
 
 	return 0;
 }
@@ -39,10 +39,6 @@ static int mtk_common_gov_event_handler(struct devfreq *devfreq,
 
 	case DEVFREQ_GOV_STOP:
 		devfreq_monitor_stop(devfreq);
-		break;
-
-	case DEVFREQ_GOV_UPDATE_INTERVAL:
-		devfreq_update_interval(devfreq, (unsigned int *)data);
 		break;
 
 	case DEVFREQ_GOV_SUSPEND:
@@ -83,7 +79,7 @@ static int mtk_common_devfreq_target(struct device *dev,
 
 	freq_khz = *freq / 1000;
 
-	if (mtk_common_gpufreq_bringup() || IS_ERR_OR_NULL(kbdev)) {
+	if (IS_ERR_OR_NULL(kbdev)) {
 		kbdev->current_nominal_freq = 0;
 		return 0;
 	}
@@ -95,36 +91,10 @@ static int mtk_common_devfreq_target(struct device *dev,
 
 	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_THERMAL_AP, freq_khz, GPUPPM_KEEP_IDX);
 
-#else
-	opp_idx = mt_gpufreq_get_opp_idx_by_freq(freq_khz);
-	if (opp_idx) {
-		pow = mt_gpufreq_get_power_by_idx(opp_idx);
-		mt_gpufreq_thermal_protect(pow);
-		resume = 0;
-	} else {
-		if (!resume) {
-			mt_gpufreq_thermal_protect(0);
-			resume = 1;
-		}
-	}
-
-	opp_idx = mt_gpufreq_get_cur_freq_index();
-	kbdev->current_nominal_freq = mt_gpufreq_get_freq_by_idx(opp_idx) * 1000;
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
 
 	return 0;
 }
-
-/* N19A code for HQHW-6512 by liwenhao at 2024/3/8 start */
-static void mtk_common_devfreq_set_cur_freq(unsigned long cur_freq){
-	struct kbase_device *kbdev;
-	kbdev = (struct kbase_device *)mtk_common_get_kbdev();
-
-	if (!kbdev)
-		return;
-	kbdev->current_nominal_freq = cur_freq * 1000;
-}
-/* N19A code for HQHW-6512 by liwenhao at 2024/3/8 end */
 
 static int mtk_common_devfreq_get_cur_freq(struct device *dev, unsigned long *freq)
 {
@@ -152,9 +122,6 @@ void mtk_common_devfreq_update_profile(struct devfreq_dev_profile *dp)
 	dp->get_dev_status = mtk_common_devfreq_status;
 	dp->get_cur_freq = mtk_common_devfreq_get_cur_freq;
 	dp->exit = NULL;
-	/* N19A code for HQHW-6512 by liwenhao at 2024/3/8 start */
-	mtk_devfreq_set_cur_freq_fp = mtk_common_devfreq_set_cur_freq;
-	/* N19A code for HQHW-6512 by liwenhao at 2024/3/8 end */
 }
 
 int mtk_common_devfreq_init(void)
@@ -169,15 +136,11 @@ int mtk_common_devfreq_init(void)
 		return ret;
 	}
 
-	if (mtk_common_gpufreq_bringup()) {
-		kbdev->current_nominal_freq = 0;
-	} else {
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 		kbdev->current_nominal_freq = gpufreq_get_cur_freq(TARGET_DEFAULT) * 1000;
 #else
 		kbdev->current_nominal_freq = mt_gpufreq_get_freq_by_idx(mt_gpufreq_get_cur_freq_index()) * 1000;
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
-	}
 
 	return ret;
 }

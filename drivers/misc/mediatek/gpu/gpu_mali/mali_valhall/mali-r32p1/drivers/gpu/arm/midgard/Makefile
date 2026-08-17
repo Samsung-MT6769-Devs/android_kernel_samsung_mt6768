@@ -125,10 +125,12 @@
     CONFIG_MALI_SCMI_ENABLE := y
     endif
 
+    #mt6768
     MTK_GPU_VERSION := $(LOCAL_MTK_GPU_VERSION)
     MTK_PLATFORM := $(MTK_PLATFORM_VERSION)
     CONFIG_MALI_REAL_HW := y
     CONFIG_MALI_DEBUG := y
+    CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT := y
     CONFIG_MALI_MIDGARD_DVFS := y
     CONFIG_MALI_DEVFREQ := y
     CONFIG_MALI_MTK_MEM_TRACK := y
@@ -205,7 +207,7 @@ else
 endif
 MALI_COVERAGE ?= 0
 
-CONFIG_MALI_PLATFORM_NAME ?= "devicetree"
+CONFIG_MALI_PLATFORM_NAME = "mt6768"
 
 # Kconfig passes in the name with quotes for in-tree builds - remove them.
 MALI_PLATFORM_DIR := $(shell echo $(CONFIG_MALI_PLATFORM_NAME))

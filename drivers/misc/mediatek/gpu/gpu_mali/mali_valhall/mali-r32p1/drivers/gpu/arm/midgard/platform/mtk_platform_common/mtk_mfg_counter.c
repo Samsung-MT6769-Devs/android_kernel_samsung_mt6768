@@ -45,7 +45,7 @@ static const char *const *hardware_counter_names;
 static int number_of_hardware_counters;
 static struct kbase_gator_hwcnt_info info;
 static struct kbase_gator_hwcnt_handles *handle;
-static struct GPU_PMU *mali_pmus;
+static GPU_PMU *mali_pmus;
 static int name_offset_table[MALI_HWC_TYPES];
 static int mfg_is_power_on;
 static int binited;
@@ -485,7 +485,7 @@ static void _mtk_mfg_init_counter(void)
 	}
 	if (!binited) {
 		number_of_hardware_counters = cnt - empty_hwc_cnt + MFG_MTK_COUNTER_SIZE;
-		mali_pmus = kcalloc(number_of_hardware_counters, sizeof(struct GPU_PMU), GFP_KERNEL);
+		mali_pmus = kcalloc(number_of_hardware_counters, sizeof(GPU_PMU), GFP_KERNEL);
 		if (!mali_pmus) {
 			pr_info("[PMU] fail to allocate mali_pmus\n");
 			return;
@@ -538,7 +538,7 @@ static int _mtk_mfg_update_counter(void)
 		ktime_get_real_ts64(&tv_end);
 		end_utime = tv_end.tv_sec * 1000000 + (tv_end.tv_nsec / 1000);
 		timd_diff_us = (end_utime > start_utime) ? (end_utime - start_utime) : 0;
-		gpu_freq = gpufreq_get_cur_freq(TARGET_DEFAULT)*1000;
+		gpu_freq = mt_gpufreq_get_cur_freq();
 		_mtk_mfg_reset_counter(1);
 		for (i = 0; i < nr_hwc_blocks; i++) {
 			shader_block = 0;
@@ -607,7 +607,7 @@ FINISH:
 	return ret;
 }
 
-static int mali_get_gpu_pmu_init(struct GPU_PMU *pmus, int pmu_size, int *ret_size)
+static int mali_get_gpu_pmu_init(GPU_PMU *pmus, int pmu_size, int *ret_size)
 {
 	int ret = PMU_OK;
 	int block[RESERVED_BLOCK + 1] = {0};
@@ -666,7 +666,7 @@ static int mali_get_gpu_pmu_init(struct GPU_PMU *pmus, int pmu_size, int *ret_si
 	return ret;
 }
 
-static int mali_get_gpu_pmu_swapnreset(struct GPU_PMU *pmus, int pmu_size)
+static int mali_get_gpu_pmu_swapnreset(GPU_PMU *pmus, int pmu_size)
 {
 	int i, ret;
 
